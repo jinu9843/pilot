@@ -9,7 +9,7 @@ export default function Sidebar() {
 
   return (
     <div className="sidebar">
-      <h2>📦 SCM 메뉴</h2>
+      <h2>SCM 메뉴</h2>
       {menu.map((m) => (
         <NavLink
           key={m.path}

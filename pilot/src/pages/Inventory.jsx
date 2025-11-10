@@ -1,10 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback  } from "react";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
 export default function Inventory() {
   const [rowData, setRowData] = useState([]);
+
+    const onRowClicked = useCallback((event) => {
+    const item = event.data;
+    console.log("선택된 품목:", item.itemNm, "| 수량:", item.qty);
+    alert(`품목: ${item.itemNm}\n창고: ${item.warehouse}\n수량: ${item.qty}`);
+  }, []);
 
   const columnDefs = useMemo(
     () => [
@@ -32,7 +38,12 @@ export default function Inventory() {
     <div>
       <h1>재고 현황</h1>
       <div className="ag-theme-alpine" style={{ height: 400 }}>
-        <AgGridReact rowData={rowData} columnDefs={columnDefs} pagination={true} />
+        <AgGridReact
+          rowData={rowData}
+          columnDefs={columnDefs}
+          pagination={true}
+          onRowClicked={onRowClicked} // useCallback으로 최적화된 핸들러 등록
+        />
       </div>
     </div>
   );
