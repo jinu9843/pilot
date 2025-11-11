@@ -1,0 +1,47 @@
+{
+  "menu": {
+    "inventory": "Inventory",
+    "transaction": "Transactions",
+    "setting": "Settings",
+    "scmMenu": "SCM Menu"
+  },
+  "title": {
+    "inventory": "Inventory",
+    "transaction": "Transactions",
+    "setting": "Settings"
+  },
+ "label": {
+  "language": "Language"
+},
+  "button": {
+    "all": "Reset",
+    "ko": "Korean",
+    "en": "English",
+    "save": "Save",
+    "apply": "Apply"
+  },
+ "grid": {
+  "txnNo": "Transaction No.",
+  "type": "Type",
+  "itemCd": "Item Code",
+  "qty": "Qty",
+  "handler": "Handler",
+  "date": "Transaction Date"
+},
+ "setting": {
+  "theme": "Theme",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "autoRefresh": "Auto Refresh"
+},
+  "transaction": {
+    "noData": "No transactions for the selected criteria."
+  },
+ "alert": {
+  "txnRowInfo": "Txn No: {{txnNo}}\nHandler: {{handler}}\nType: {{type}}"
+},
+  "placeholder": {
+  "txnExample": "e.g. TX-1001",
+  "handlerExample": "e.g. John Kim"
+}
+}

@@ -1,48 +1,52 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function Setting() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState({
-    theme: "라이트",
-    language: "한국어",
+    theme: t("setting.themeLight"),
+    language: t("button.ko"),
     autoRefresh: true,
   });
 
   return (
     <div>
-      <h1>시스템 설정</h1>
+      <h1>{t("title.setting")}</h1>
       <table className="grid-table">
         <tbody>
           <tr>
-            <td>테마</td>
+            <td>{t("setting.theme")}</td>
             <td>
               <select
                 value={config.theme}
                 onChange={(e) => setConfig({ ...config, theme: e.target.value })}
               >
-                <option>라이트</option>
-                <option>다크</option>
+                <option>{t("setting.themeLight")}</option>
+                <option>{t("setting.themeDark")}</option>
               </select>
             </td>
           </tr>
           <tr>
-            <td>언어</td>
+            <td>{t("label.language")}</td>
             <td>
               <select
                 value={config.language}
                 onChange={(e) => setConfig({ ...config, language: e.target.value })}
               >
-                <option>한국어</option>
-                <option>영어</option>
+                <option>{t("button.ko")}</option>
+                <option>{t("button.en")}</option>
               </select>
             </td>
           </tr>
           <tr>
-            <td>자동 새로고침</td>
+            <td>{t("setting.autoRefresh")}</td>
             <td>
               <input
                 type="checkbox"
                 checked={config.autoRefresh}
-                onChange={(e) => setConfig({ ...config, autoRefresh: e.target.checked })}
+                onChange={(e) =>
+                  setConfig({ ...config, autoRefresh: e.target.checked })
+                }
               />
             </td>
           </tr>

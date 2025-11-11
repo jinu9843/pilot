@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -6,15 +7,22 @@ import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
 export default function Transaction() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [searchTxn, setSearchTxn] = useState(""); // ✅ 거래번호
-  const [searchHandler, setSearchHandler] = useState(""); // ✅ 담당자
+  const [searchTxn, setSearchTxn] = useState(""); // 거래번호
+  const [searchHandler, setSearchHandler] = useState(""); // 담당자
 
   const onRowClicked = useCallback((e) => {
     const tx = e.data;
-    alert(`거래번호: ${tx.txnNo}\n담당자: ${tx.handler}\n유형: ${tx.type}`);
-  }, []);
+    alert(
+      t("alert.txnRowInfo", {
+        txnNo: tx.txnNo,
+        handler: tx.handler,
+        type: tx.type,
+      })
+    );
+  }, [t]);
 
   // ✅ 검색 로직
   const filterData = useCallback(() => {
@@ -41,14 +49,14 @@ export default function Transaction() {
 
   const columnDefs = useMemo(
     () => [
-      { headerName: "거래번호", field: "txnNo", sortable: true },
-      { headerName: "유형", field: "type" },
-      { headerName: "품목코드", field: "itemCd" },
-      { headerName: "수량", field: "qty", type: "rightAligned" },
-      { headerName: "담당자", field: "handler" },
-      { headerName: "거래일자", field: "date" },
+      { headerName: t("grid.txnNo"), field: "txnNo", sortable: true },
+      { headerName: t("grid.type"), field: "type" },
+      { headerName: t("grid.itemCd"), field: "itemCd" },
+      { headerName: t("grid.qty"), field: "qty", type: "rightAligned" },
+      { headerName: t("grid.handler"), field: "handler" },
+      { headerName: t("grid.date"), field: "date" },
     ],
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -64,22 +72,22 @@ export default function Transaction() {
 
   return (
     <div>
-      <h1>거래 내역</h1>
+      <h1>{t("title.transaction")}</h1>
 
       {/* ✅ 검색창 2개로 분리 */}
       <div style={{ marginBottom: 10 }}>
-        🔍 거래번호:{" "}
+        🔍 {t("grid.txnNo")}:{" "}
         <input
           type="text"
-          placeholder="예: TX-1001"
+          placeholder={t("placeholder.txnExample")}
           value={searchTxn}
           onChange={(e) => setSearchTxn(e.target.value)}
           style={{ padding: "5px", marginRight: "10px" }}
         />
-        담당자:{" "}
+        {t("grid.handler")}:{" "}
         <input
           type="text"
-          placeholder="예: 홍길동"
+          placeholder={t("placeholder.handlerExample")}
           value={searchHandler}
           onChange={(e) => setSearchHandler(e.target.value)}
           style={{ padding: "5px" }}
@@ -92,7 +100,7 @@ export default function Transaction() {
             setFiltered(rows);
           }}
         >
-          전체보기
+          {t("button.all")}
         </button>
       </div>
 

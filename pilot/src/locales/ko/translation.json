@@ -1,0 +1,47 @@
+{
+  "menu": {
+    "inventory": "재고 현황",
+    "transaction": "거래 내역",
+    "setting": "시스템 설정",
+    "scmMenu": "SCM 메뉴"
+  },
+  "title": {
+    "inventory": "재고 현황",
+    "transaction": "거래 내역",
+    "setting": "시스템 설정"
+  },
+"label": {
+  "language": "언어"
+},
+  "button": {
+    "all": "전체보기",
+    "ko": "한글",
+    "en": "영어",
+    "save": "저장",
+    "apply": "적용"
+  },
+"grid": {
+"txnNo": "거래번호",
+"type": "유형",
+"itemCd": "품목코드",
+"qty": "수량",
+"handler": "담당자",
+"date": "거래일자"
+},
+ "setting": {
+  "theme": "테마",
+  "themeLight": "라이트",
+  "themeDark": "다크",
+  "autoRefresh": "자동 새로고침"
+},
+  "transaction": {
+    "noData": "해당 조건의 거래 내역이 없습니다."
+  },
+ "alert": {
+  "txnRowInfo": "거래번호: {{txnNo}}\n담당자: {{handler}}\n유형: {{type}}"
+},
+  "placeholder": {
+  "txnExample": "예: TX-1001",
+  "handlerExample": "예: 홍길동"
+}
+}

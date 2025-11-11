@@ -1,15 +1,18 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   const menu = [
-    { name: "재고 현황", path: "/" },
-    { name: "거래 내역", path: "/transaction" },
-    { name: "시스템 설정", path: "/setting" },
+    { name: t("menu.inventory"), path: "/" },
+    { name: t("menu.transaction"), path: "/transaction" },
+    { name: t("menu.setting"), path: "/setting" }
   ];
 
   return (
     <div className="sidebar">
-      <h2>SCM 메뉴</h2>
+      <h2>{t("menu.scmMenu")}</h2>
       {menu.map((m) => (
         <NavLink
           key={m.path}
@@ -21,6 +24,7 @@ export default function Sidebar() {
           {m.name}
         </NavLink>
       ))}
+      <LanguageSwitcher /> {/* 언어 전환 */}
     </div>
   );
 }
