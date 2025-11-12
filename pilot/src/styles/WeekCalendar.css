@@ -1,0 +1,33 @@
+.week-calendar-container {
+  position: relative;
+}
+
+/* 달력 내부 주차 표시 */
+.react-datepicker__week::before {
+  content: attr(data-week);
+  position: absolute;
+  left: -28px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* 선택된 주차 강조 */
+.react-datepicker__week.highlight-week::before {
+  font-weight: bold;
+  color: #1976d2;
+}
+
+/* 선택된 날짜 강조 */
+.react-datepicker__day--selected {
+  background-color: #1976d2 !important;
+  color: white !important;
+  border-radius: 50%;
+}
+
+/* 팝업 스타일 */
+.react-datepicker {
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
+  font-size: 14px;
+}

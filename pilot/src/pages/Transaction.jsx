@@ -13,6 +13,8 @@ export default function Transaction() {
   const [searchTxn, setSearchTxn] = useState(""); // 거래번호
   const [searchHandler, setSearchHandler] = useState(""); // 담당자
 
+  /* 
+  🔹 useCallback 원본 (함수를 메모이제이션)
   const onRowClicked = useCallback((e) => {
     const tx = e.data;
     alert(
@@ -23,8 +25,22 @@ export default function Transaction() {
       })
     );
   }, [t]);
+  */
 
-  // ✅ 검색 로직
+  // ✅ useCallback 제거 → 일반 함수로 변경
+  function onRowClicked(e) {
+    const tx = e.data;
+    alert(
+      t("alert.txnRowInfo", {
+        txnNo: tx.txnNo,
+        handler: tx.handler,
+        type: tx.type,
+      })
+    );
+  }
+
+  /* 
+  🔹 useCallback 원본 (검색 필터 함수)
   const filterData = useCallback(() => {
     let result = [...rows];
 
@@ -42,11 +58,33 @@ export default function Transaction() {
 
     setFiltered(result);
   }, [rows, searchTxn, searchHandler]);
+  */
+
+  // ✅ 일반 함수로 대체
+  function filterData() {
+    let result = [...rows];
+
+    if (searchTxn) {
+      result = result.filter((row) =>
+        row.txnNo.toLowerCase().includes(searchTxn.toLowerCase())
+      );
+    }
+
+    if (searchHandler) {
+      result = result.filter((row) =>
+        row.handler.toLowerCase().includes(searchHandler.toLowerCase())
+      );
+    }
+
+    setFiltered(result);
+  }
 
   useEffect(() => {
     filterData();
-  }, [filterData]);
+  }, [rows, searchTxn, searchHandler]); // ✅ 일반 함수 호출로 변경
 
+  /* 
+  🔹 useMemo 원본 (컬럼 정의를 메모이제이션)
   const columnDefs = useMemo(
     () => [
       { headerName: t("grid.txnNo"), field: "txnNo", sortable: true },
@@ -58,7 +96,19 @@ export default function Transaction() {
     ],
     [t]
   );
+  */
 
+  // ✅ useMemo 제거 → 단순 변수 선언
+  const columnDefs = [
+    { headerName: t("grid.txnNo"), field: "txnNo", sortable: true },
+    { headerName: t("grid.type"), field: "type" },
+    { headerName: t("grid.itemCd"), field: "itemCd" },
+    { headerName: t("grid.qty"), field: "qty", type: "rightAligned" },
+    { headerName: t("grid.handler"), field: "handler" },
+    { headerName: t("grid.date"), field: "date" },
+  ];
+
+  // ✅ 더미 데이터 세팅
   useEffect(() => {
     const data = [
       { txnNo: "TX-1001", type: "입고", itemCd: "MAT-001", qty: 2000, handler: "홍길동", date: "2025-11-02" },
@@ -74,7 +124,7 @@ export default function Transaction() {
     <div>
       <h1>{t("title.transaction")}</h1>
 
-      {/* ✅ 검색창 2개로 분리 */}
+      {/* ✅ 검색창 */}
       <div style={{ marginBottom: 10 }}>
         🔍 {t("grid.txnNo")}:{" "}
         <input
@@ -104,6 +154,7 @@ export default function Transaction() {
         </button>
       </div>
 
+      {/* ✅ AG Grid */}
       <div className="ag-theme-alpine" style={{ height: 400 }}>
         <AgGridReact
           rowData={filtered}
