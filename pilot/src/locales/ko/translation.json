@@ -11,7 +11,9 @@
     "setting": "시스템 설정"
   },
 "label": {
-  "language": "언어"
+  "language": "언어",
+   "inDate": "입고일자",
+  "week": "주차"
 },
   "button": {
     "all": "전체보기",
@@ -42,6 +44,8 @@
 },
   "placeholder": {
   "txnExample": "예: TX-1001",
-  "handlerExample": "예: 홍길동"
+  "handlerExample": "예: 홍길동",
+   "date": "날짜 선택",
+  "itemCd": "품목코드 검색"
 }
 }

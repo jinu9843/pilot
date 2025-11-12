@@ -11,10 +11,12 @@
     "setting": "Settings"
   },
  "label": {
-  "language": "Language"
-},
+  "language": "Language",
+  "inDate": "Inbound Date",
+  "week": "Week"
+  },
   "button": {
-    "all": "Reset",
+    "all": "all",
     "ko": "Korean",
     "en": "English",
     "save": "Save",
@@ -42,6 +44,8 @@
 },
   "placeholder": {
   "txnExample": "e.g. TX-1001",
-  "handlerExample": "e.g. John Kim"
+  "handlerExample": "e.g. John Kim",
+   "date": "Select date",
+  "itemCd": "Search item code"
 }
 }
