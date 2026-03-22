@@ -1,0 +1,200 @@
+==============================================================
+  회사에서 추가할 코드 메모
+  (MenuManagement.jsx 에 추가)
+==============================================================
+
+
+① state 3개 추가 (기존 state 아래에 추가)
+--------------------------------------------------------------
+const [selectedKey, setSelectedKey] = useState(null);
+const [addedKeys, setAddedKeys] = useState([]);
+const [originalFormData, setOriginalFormData] = useState(initialFormData);
+
+
+② 헬퍼 함수 2개 (함수들 모여있는 곳에 추가)
+--------------------------------------------------------------
+const addNodeToTree = (nodes, parentKey, newNode) => {
+  if (!parentKey || parentKey === '0') return [...nodes, newNode];
+  return nodes.map((node) => {
+    if (node.key === parentKey)
+      return { ...node, children: [...node.children, newNode] };
+    if (node.children?.length > 0)
+      return { ...node, children: addNodeToTree(node.children, parentKey, newNode) };
+    return node;
+  });
+};
+
+const removeNodeFromTree = (nodes, key) =>
+  nodes.filter((n) => n.key !== key)
+       .map((n) => ({ ...n, children: removeNodeFromTree(n.children, key) }));
+
+
+③ handleMenuSelect 에 2줄 추가
+--------------------------------------------------------------
+const handleMenuSelect = ({ key }) => {
+  // ... 기존 findNode 로직 ...
+  if (targetNode?.rawData) {
+    setSelectedKey(key);                              // ← 추가
+    const data = { ...initialFormData, ...targetNode.rawData };
+    setFormData(data);
+    setOriginalFormData(data);                        // ← 추가
+  }
+};
+
+
+④ 기능추가 함수
+--------------------------------------------------------------
+const handleAddSameLevel = () => {
+  if (!selectedKey) return;
+  const newKey = `NEW_${Date.now()}`;
+  const newFormData = {
+    ...initialFormData,
+    FUNC_ID:       newKey,
+    UPPER_FUNC_ID: formData.UPPER_FUNC_ID,  // 선택 노드의 부모
+    UPPER_FUNC_NM: formData.UPPER_FUNC_NM,
+    LVL_VAL:       formData.LVL_VAL,        // 같은 레벨
+  };
+  const newNode = { key: newKey, title: '(신규)', isNew: true, rawData: newFormData, children: [] };
+
+  setMenuData((prev) => addNodeToTree(prev, formData.UPPER_FUNC_ID, newNode));
+  setAddedKeys((prev) => [...prev, newKey]);
+  setSelectedKey(newKey);
+  setFormData(newFormData);
+  setOriginalFormData(newFormData);
+};
+
+
+⑤ 하위기능추가 함수
+--------------------------------------------------------------
+const handleAddSubLevel = () => {
+  if (!selectedKey) return;
+  const newKey = `NEW_${Date.now()}`;
+  const newFormData = {
+    ...initialFormData,
+    FUNC_ID:       newKey,
+    UPPER_FUNC_ID: formData.FUNC_ID,             // 선택 노드 자신이 부모
+    UPPER_FUNC_NM: formData.KOR_FUNC_NM,
+    LVL_VAL:       Number(formData.LVL_VAL) + 1, // 한 단계 아래
+  };
+  const newNode = { key: newKey, title: '(신규)', isNew: true, rawData: newFormData, children: [] };
+
+  // 선택 노드 펼치기
+  setExpandedMenuKeys((prev) => new Set([...prev, formData.FUNC_ID]));
+  setOpenKeys((prev) => [...new Set([...prev, formData.FUNC_ID])]);
+
+  setMenuData((prev) => addNodeToTree(prev, formData.FUNC_ID, newNode));
+  setAddedKeys((prev) => [...prev, newKey]);
+  setSelectedKey(newKey);
+  setFormData(newFormData);
+  setOriginalFormData(newFormData);
+};
+
+
+⑥ updateField 에 타이틀 동기화 추가
+--------------------------------------------------------------
+const updateField = (field, value) => {
+  setFormData((prev) => ({ ...prev, [field]: value }));
+
+  // 신규 노드 작성 중 한글기능명 → 트리 타이틀 실시간 반영
+  if (field === 'KOR_FUNC_NM' && selectedKey && addedKeys.includes(selectedKey)) {
+    const newTitle = value || '(신규)';
+    setMenuData((prev) =>
+      (function update(nodes) {
+        return nodes.map((n) => {
+          if (n.key === selectedKey) return { ...n, title: newTitle };
+          return { ...n, children: update(n.children) };
+        });
+      })(prev)
+    );
+  }
+};
+
+
+⑦ 딜리트 함수
+--------------------------------------------------------------
+const handleDeleteNew = () => {
+  // 신규 노드 있으면 마지막부터 역순 제거
+  if (addedKeys.length > 0) {
+    const lastKey = addedKeys[addedKeys.length - 1];
+    setMenuData((prev) => removeNodeFromTree(prev, lastKey));
+    setAddedKeys((prev) => prev.slice(0, -1));
+    if (selectedKey === lastKey) {
+      setSelectedKey(null);
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData);
+    }
+    return;
+  }
+  // 신규 노드 없으면 기존 노드 서버 삭제 확인
+  if (!selectedKey) return;
+  if (window.confirm(`'${formData.KOR_FUNC_NM}' 삭제하시겠습니까?`)) {
+    // await axiosUtil.post('/api/.../delete', { FUNC_ID: formData.FUNC_ID });
+    setMenuData((prev) => removeNodeFromTree(prev, selectedKey));
+    setSelectedKey(null);
+    setFormData(initialFormData);
+  }
+};
+
+
+⑧ 저장 함수
+--------------------------------------------------------------
+const handleSave = async () => {
+  if (JSON.stringify(formData) === JSON.stringify(originalFormData)) {
+    alert('변경된 사항이 없습니다.');
+    return;
+  }
+  if (!window.confirm('저장하시겠습니까?')) return;
+
+  const isNew = selectedKey && addedKeys.includes(selectedKey);
+  const payload = isNew
+    ? { ...formData, FUNC_ID: formData.FUNC_ID.startsWith('NEW_') ? '' : formData.FUNC_ID }
+    : { ...formData };
+
+  // await axiosUtil.post('/api/.../save', payload);
+
+  if (isNew) {
+    setAddedKeys((prev) => prev.filter((k) => k !== selectedKey));
+    setMenuData((prev) =>
+      (function clear(nodes) {
+        return nodes.map((n) => {
+          if (n.key === selectedKey) { const { isNew: _, ...rest } = n; return rest; }
+          return { ...n, children: clear(n.children) };
+        });
+      })(prev)
+    );
+  }
+  setOriginalFormData(formData);
+  alert('저장되었습니다.');
+};
+
+
+⑨ 버튼 3개 (JSX 에 추가)
+--------------------------------------------------------------
+<Button onClick={handleAddSameLevel} disabled={!selectedKey}>기능추가</Button>
+<Button onClick={handleAddSubLevel}  disabled={!selectedKey}>하위기능추가</Button>
+<Button onClick={handleDeleteNew} disabled={addedKeys.length === 0 && !selectedKey}>딜리트</Button>
+<Button onClick={handleSave}>저장</Button>
+
+
+==============================================================
+  핵심 차이 한 줄 요약
+==============================================================
+
+                  UPPER_FUNC_ID                   LVL_VAL
+기능추가      formData.UPPER_FUNC_ID (부모)       그대로
+하위기능추가  formData.FUNC_ID (선택 노드 자신)   +1
+
+==============================================================
+  작업 순서
+==============================================================
+
+1. state 3개 추가                      (5분)
+2. 헬퍼 함수 2개 복사                  (5분)
+3. handleMenuSelect 에 2줄 추가        (2분)
+4. 기능추가 함수 복사 + 버튼 연결      (5분)
+5. 하위기능추가 함수 복사 + 버튼 연결  (5분)
+6. updateField 에 타이틀 동기화 추가   (3분)
+7. 딜리트 함수 복사 + 버튼 연결        (5분)
+8. 저장 함수 복사 + 버튼 연결          (5분)
+
+==============================================================
