@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Java Debug → Swagger JSON 변환기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Pretendard, "Malgun Gothic", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .desc {
+      color: #6b7280;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 10px; }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 12px 0;
+    }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    button:hover { background: #f3f4f6; }
+    button.primary:hover { background: #1d4ed8; }
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .example {
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      color: #4b5563;
+    }
+    .status {
+      font-size: 13px;
+      color: #059669;
+      min-height: 20px;
+    }
+    .error { color: #dc2626; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    th { background: #f9fafb; }
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Java Debug → Swagger JSON 변환기</h1>
+    <p class="desc">
+      AS-IS Java 디버그 출력(<code>sort_cnt ={0}</code>)을 Swagger Request Body용 JSON(<code>"sortCnt": "0"</code>)으로 변환합니다.<br />
+      snake_case → camelCase, <code>{&lt;null&gt;}</code> → null, <code>{}</code> → 빈 문자열 처리를 지원합니다.
+    </p>
+
+    <div class="panel">
+      <h2>입력 (Java 디버그 값 붙여넣기)</h2>
+      <textarea id="input" placeholder="sort_cnt ={0}
+pri_user_id={<null>}
+sale_typ={}
+rnd_unit={1}"></textarea>
+      <div class="toolbar">
+        <button class="primary" id="convertBtn" type="button">변환</button>
+        <button id="sampleBtn" type="button">예시 넣기</button>
+        <button id="clearBtn" type="button">지우기</button>
+        <label><input type="checkbox" id="numbersAsNumber" /> 숫자는 JSON number로 (예: 0, 1)</label>
+        <label><input type="checkbox" id="omitNull" checked /> null 필드는 JSON에서 제외</label>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <h2>출력 (Swagger JSON)</h2>
+      <textarea id="output" readonly placeholder="변환 결과가 여기에 표시됩니다."></textarea>
+      <div class="toolbar">
+        <button id="copyBtn" type="button">JSON 복사</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>변환 미리보기</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>원본 키</th>
+            <th>변환 키 (camelCase)</th>
+            <th>원본 값</th>
+            <th>JSON 값</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody">
+          <tr><td colspan="4" style="color:#9ca3af;">변환 후 표시됩니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>입력 예시</h2>
+      <div class="example">sort_cnt ={0}
+pri_user_id={<null>}
+sale_typ={}
+rnd_unit={1}
+period_from={202601}
+period_to={202606}</div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const previewBody = document.getElementById('previewBody');
+    const numbersAsNumberEl = document.getElementById('numbersAsNumber');
+    const omitNullEl = document.getElementById('omitNull');
+
+    const SAMPLE = `sort_cnt ={0}
+pri_user_id={<null>}
+sale_typ={}
+rnd_unit={1}
+period_from={202601}
+period_to={202606}`;
+
+    function snakeToCamel(key) {
+      return key
+        .toLowerCase()
+        .replace(/_([a-z0-9])/g, (_, ch) => ch.toUpperCase());
+    }
+
+    function parseValue(raw, numbersAsNumber) {
+      const text = raw.trim();
+
+      if (text === '<null>' || text.toLowerCase() === 'null') {
+        return { type: 'null', json: null, display: 'null' };
+      }
+      if (text === '') {
+        return { type: 'string', json: '', display: '""' };
+      }
+
+      if (numbersAsNumber && /^-?\d+(\.\d+)?$/.test(text)) {
+        return { type: 'number', json: Number(text), display: String(Number(text)) };
+      }
+
+      if (text === 'true' || text === 'false') {
+        return { type: 'boolean', json: text === 'true', display: text };
+      }
+
+      return { type: 'string', json: text, display: `"${text}"` };
+    }
+
+    function parseLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) {
+        return null;
+      }
+
+      const match = trimmed.match(/^([a-zA-Z][a-zA-Z0-9_]*)\s*=\s*\{([^}]*)\}\s*$/);
+      if (!match) return { error: `형식 오류: ${trimmed}` };
+
+      const originalKey = match[1];
+      const camelKey = snakeToCamel(originalKey);
+      const rawValue = match[2];
+      const parsed = parseValue(rawValue, numbersAsNumberEl.checked);
+
+      return {
+        originalKey,
+        camelKey,
+        rawValue,
+        ...parsed,
+      };
+    }
+
+    function convert() {
+      const lines = inputEl.value.split(/\r?\n/);
+      const rows = [];
+      const errors = [];
+      const result = {};
+
+      for (const line of lines) {
+        const parsed = parseLine(line);
+        if (!parsed) continue;
+        if (parsed.error) {
+          errors.push(parsed.error);
+          continue;
+        }
+        if (omitNullEl.checked && parsed.type === 'null') {
+          rows.push(parsed);
+          continue;
+        }
+        result[parsed.camelKey] = parsed.json;
+        rows.push(parsed);
+      }
+
+      outputEl.value = JSON.stringify(result, null, 2);
+      renderPreview(rows);
+
+      if (errors.length > 0) {
+        statusEl.className = 'status error';
+        statusEl.textContent = `변환 완료 (${Object.keys(result).length}건), 오류 ${errors.length}건: ${errors.join(' / ')}`;
+      } else {
+        statusEl.className = 'status';
+        statusEl.textContent = `변환 완료: ${Object.keys(result).length}개 필드`;
+      }
+    }
+
+    function renderPreview(rows) {
+      if (!rows.length) {
+        previewBody.innerHTML = '<tr><td colspan="4" style="color:#9ca3af;">변환할 데이터가 없습니다.</td></tr>';
+        return;
+      }
+
+      previewBody.innerHTML = rows.map((row) => {
+        if (row.error) {
+          return `<tr><td colspan="4" class="error">${row.error}</td></tr>`;
+        }
+        const raw = `{${row.rawValue}}`;
+        return `<tr>
+          <td><code>${row.originalKey}</code></td>
+          <td><code>${row.camelKey}</code></td>
+          <td><code>${raw}</code></td>
+          <td><code>${row.display}</code></td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('convertBtn').addEventListener('click', convert);
+    document.getElementById('sampleBtn').addEventListener('click', () => {
+      inputEl.value = SAMPLE;
+      convert();
+    });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.value = '';
+      statusEl.textContent = '';
+      previewBody.innerHTML = '<tr><td colspan="4" style="color:#9ca3af;">변환 후 표시됩니다.</td></tr>';
+    });
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      if (!outputEl.value) return;
+      await navigator.clipboard.writeText(outputEl.value);
+      statusEl.className = 'status';
+      statusEl.textContent = 'JSON이 클립보드에 복사되었습니다.';
+    });
+
+    numbersAsNumberEl.addEventListener('change', () => {
+      if (inputEl.value.trim()) convert();
+    });
+    omitNullEl.addEventListener('change', () => {
+      if (inputEl.value.trim()) convert();
+    });
+
+    inputEl.value = SAMPLE;
+    convert();
+  </script>
+</body>
+</html>
