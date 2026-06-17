@@ -254,11 +254,7 @@
         <p class="desc">
           넥사크로 요청값, 응답값, 넥스코어 서비스 메서드, 기존 SQL XML을 붙여넣으면
           오프라인에서 Spring Boot 초안 코드를 생성합니다.
-          결과로 <code>RequestDto</code>, <code>QueryDto</code>, <code>ResponseDto</code>,
-          <code>Service</code>, <code>ServiceImpl</code>, <code>Mapper</code>,
-          <code>Mapper.xml</code>, <code>Controller</code>,
-          <code>서비스 소스 분석</code>, <code>서비스 변환 초안</code>,
-          <code>Swagger용 요청 예시 JSON</code>이 만들어집니다.
+          <span id="generatorVersion" class="editor-sub"></span>
         </p>
       </div>
 
@@ -319,8 +315,8 @@
         입력 형식은 너무 엄격하지 않게 만들었습니다. SQL XML 변환 시 아래 규칙을 적용합니다.
         <br />
         1. <code>&lt;isNotEqual property="STD_WEEK" compareValue="Y"&gt;</code>
-        → <code>&lt;if test="stdWeek != 'Y'"&gt;</code>
-        (작은따옴표 test + <code>!="Y"</code> 조합은 오류 → 큰따옴표 test + <code>!= 'Y'</code> 사용)
+        → <code>&lt;if test='stdWeek != "Y"'&gt;</code>
+        (바깥 홑따옴표, 값 <code>Y</code>는 쌍따옴표)
         <br />
         2. <code>NVL(M$arrYmList[].ym$_MO_R,0)</code>
         → <code>NVL(M${item.ym}_MO_R,0)</code> + <code>&lt;foreach collection="arrYmList" item="item"&gt;</code>
@@ -376,7 +372,7 @@
       </div>
     </div>
 
-    <script src="./generator.js"></script>
+    <script src="./generator.js?v=20250616c"></script>
     <script>
       const outputTabs = [
         { key: "summary", label: "요약" },
@@ -655,6 +651,11 @@ TOT_CNT INT`;
       });
 
       renderTabs();
+
+      const versionEl = document.getElementById("generatorVersion");
+      if (versionEl && NexacroSpringbootGenerator.GENERATOR_VERSION) {
+        versionEl.textContent = " (변환기 v" + NexacroSpringbootGenerator.GENERATOR_VERSION + ")";
+      }
     </script>
   </body>
 </html>

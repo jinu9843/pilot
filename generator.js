@@ -5,6 +5,7 @@
     root.NexacroSpringbootGenerator = factory();
   }
 })(typeof self !== "undefined" ? self : this, function () {
+  const GENERATOR_VERSION = "2025-06-16c";
   const MYBATIS_DOCTYPE =
     '<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">';
 
@@ -1012,9 +1013,14 @@
     return trimmed;
   }
 
+  // MyBatis OGNL: test='prop != "Y"' (바깥 홑따옴표, 문자열은 쌍따옴표)
+  function wrapIfTestExpression(expression) {
+    return "<if test='" + expression + "'>";
+  }
+
   function quoteOgnlLiteral(value) {
     if (value == null || value === "") {
-      return "''";
+      return '""';
     }
     if (/^-?\d+(\.\d+)?$/.test(String(value))) {
       return String(value);
@@ -1022,8 +1028,33 @@
     if (/^(true|false|null)$/i.test(String(value))) {
       return String(value).toLowerCase();
     }
-  // MyBatis OGNL: test="prop != 'Y'" 형태가 안전함 (test='prop !="Y"' 금지)
-    return "'" + String(value).replace(/'/g, "''") + "'";
+    return '"' + String(value).replace(/"/g, '\\"') + '"';
+  }
+
+  function normalizeIfTestAttributes(source, warnings) {
+    return source.replace(/<if\s+test\s*=\s*(['"])([\s\S]*?)\1\s*>/gi, function (_full, quote, rawInner) {
+      let inner = String(rawInner || "").replace(/\s+/g, " ").trim();
+      inner = inner.replace(/\s*!=\s*!=\s*/g, " != ");
+
+      const notEqualMatch = inner.match(/^([A-Za-z_][\w.]*)\s*!=\s*["']([^"']*)["']\s*$/);
+      if (notEqualMatch) {
+        return wrapIfTestExpression(notEqualMatch[1] + ' != "' + notEqualMatch[2] + '"');
+      }
+
+      const equalMatch = inner.match(/^([A-Za-z_][\w.]*)\s*==\s*["']([^"']*)["']\s*$/);
+      if (equalMatch) {
+        return wrapIfTestExpression(equalMatch[1] + ' == "' + equalMatch[2] + '"');
+      }
+
+      if (quote === '"') {
+        if (warnings) {
+          warnings.push("if test 큰따옴표 속성을 홑따옴표 형식으로 교정했습니다: " + inner);
+        }
+        return wrapIfTestExpression(inner);
+      }
+
+      return wrapIfTestExpression(inner);
+    });
   }
 
   function buildCompareExpression(property, attrs, fieldNameMap) {
@@ -1053,9 +1084,9 @@
       case "isNull":
         return property + " == null";
       case "isNotEmpty":
-        return property + " != null and " + property + " != ''";
+        return property + " != null and " + property + ' != ""';
       case "isEmpty":
-        return property + " == null or " + property + " == ''";
+        return property + " == null or " + property + ' == ""';
       case "isEqual":
         return property + " == " + buildCompareExpression(property, attrs, fieldNameMap);
       case "isNotEqual":
@@ -1190,7 +1221,7 @@
         }
 
         const prepend = attrs.prepend ? attrs.prepend + " " : "";
-        return '<if test="' + test + '">' + prepend;
+        return wrapIfTestExpression(test) + prepend;
       }
     );
 
@@ -1275,6 +1306,7 @@
     converted = applyFieldNameMappings(converted, options.fieldNameMap || {});
     converted = convertIterate(converted, options.fieldNameMap || {});
     converted = convertDynamicTags(converted, warnings, options.fieldNameMap || {});
+    converted = normalizeIfTestAttributes(converted, warnings);
     converted = updateStatementAttributes(converted, options, warnings);
 
     const legacyTags = findRemainingLegacyTags(converted);
@@ -1498,6 +1530,7 @@
   }
 
   return {
+    GENERATOR_VERSION: GENERATOR_VERSION,
     generateBackendArtifacts: generateBackendArtifacts,
   };
 });
