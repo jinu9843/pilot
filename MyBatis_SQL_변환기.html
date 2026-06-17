@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyBatis SQL 변환기 (DBeaver용)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", Pretendard, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 10px; }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+    #output { min-height: 220px; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    button:hover { background: #f3f4f6; }
+    button.primary:hover { background: #1d4ed8; }
+    .status { font-size: 13px; color: #059669; margin-top: 10px; min-height: 18px; }
+    .status.error { color: #dc2626; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+    th { background: #f9fafb; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+    .guide {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.7;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>MyBatis SQL 변환기 (DBeaver용)</h1>
+    <p class="sub">
+      스프링부트 콘솔의 <code>Preparing:</code> + <code>Parameters:</code> 로그를 붙여넣으면
+      <code>?</code> 자리에 파라미터를 순서대로 넣은 <strong>실행 가능한 SQL</strong>을 만들어 줍니다.<br />
+      HTML + JS 2개 파일을 같은 폴더에 두고 HTML을 더블클릭하세요.
+    </p>
+
+    <div class="panel">
+      <h2>① MyBatis 로그 전체 붙여넣기</h2>
+      <textarea id="logInput" placeholder="==>  Preparing: SELECT ...
+==> Parameters: Y(String), 202505(String)"></textarea>
+      <div class="toolbar">
+        <button type="button" id="parseLogBtn">로그에서 분리</button>
+        <button type="button" id="sampleBtn">예시 넣기</button>
+        <button type="button" id="clearBtn">지우기</button>
+      </div>
+    </div>
+
+    <div class="panel grid-2">
+      <div>
+        <h2>② 쿼리 (Preparing)</h2>
+        <textarea id="queryInput" placeholder="SELECT * FROM ... WHERE A = ? AND B = ?"></textarea>
+      </div>
+      <div>
+        <h2>③ 파라미터 (Parameters)</h2>
+        <textarea id="paramsInput" placeholder="Y(String), 202505(String), 10(Integer)"></textarea>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <button class="primary" type="button" id="convertBtn">SQL 변환</button>
+        <button type="button" id="copyBtn">SQL 복사</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <h2>④ DBeaver 실행용 SQL</h2>
+      <textarea id="output" readonly placeholder="변환된 SQL"></textarea>
+    </div>
+
+    <div class="panel">
+      <h2>⑤ 파라미터 치환 미리보기</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>순서</th>
+            <th>원본</th>
+            <th>타입</th>
+            <th>SQL 값</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody">
+          <tr><td colspan="4" style="color:#9ca3af;">변환 후 표시됩니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel guide">
+      <strong>사용법</strong><br />
+      1. 콘솔에서 <code>Preparing:</code> / <code>Parameters:</code> 로그 복사<br />
+      2. ①에 붙여넣기 → <strong>로그에서 분리</strong><br />
+      3. <strong>SQL 변환</strong> 클릭<br />
+      4. ④ 결과를 DBeaver에 붙여넣고 실행<br /><br />
+      <strong>치환 규칙</strong><br />
+      · String/Date/Timestamp → <code>'값'</code><br />
+      · Integer/Long/Double → 숫자 그대로<br />
+      · null → <code>NULL</code>
+    </div>
+  </div>
+
+  <script src="./MyBatis_SQL_변환기.js"></script>
+</body>
+</html>
