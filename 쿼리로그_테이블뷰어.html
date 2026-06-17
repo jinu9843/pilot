@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>쿼리 로그 테이블 뷰어</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", Pretendard, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 10px; }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    #input {
+      min-height: 140px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    button:hover { background: #f3f4f6; }
+    button.primary:hover { background: #1d4ed8; }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .status { font-size: 13px; color: #059669; margin-top: 10px; min-height: 18px; }
+    .status.error { color: #dc2626; }
+    .stats { font-size: 13px; color: #6b7280; margin-bottom: 10px; }
+    .empty { color: #9ca3af; text-align: center; padding: 40px 0; }
+    .table-scroll {
+      overflow: auto;
+      max-height: 65vh;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    .data-table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 13px;
+    }
+    .data-table th,
+    .data-table td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      white-space: nowrap;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .data-table th {
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: 600;
+      position: relative;
+    }
+    .data-table.sticky th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      box-shadow: 0 1px 0 #dbeafe;
+    }
+    .data-table.zebra tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    .data-table tbody tr:hover {
+      background: #fef9c3;
+    }
+    .data-table .row-no {
+      background: #f3f4f6;
+      color: #6b7280;
+      text-align: center;
+      font-weight: 600;
+      min-width: 42px;
+    }
+    .data-table .empty-cell {
+      background: #fff7ed;
+      color: #c2410c;
+      text-align: center;
+    }
+    .col-idx {
+      display: block;
+      font-size: 10px;
+      color: #93c5fd;
+      font-weight: 400;
+    }
+    .guide {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.7;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>쿼리 로그 테이블 뷰어</h1>
+    <p class="sub">
+      AS-IS 서버 쿼리 로그(<code>scm_family_cd | tech_cd | ...</code>)를 붙여넣으면
+      <strong>엑셀처럼 보기 편한 표</strong>로 보여줍니다.<br />
+      HTML + JS 2개 파일을 <code>cursor</code> 폴더에 두고 HTML을 더블클릭하세요.
+    </p>
+
+    <div class="panel">
+      <h2>① 쿼리 로그 붙여넣기</h2>
+      <textarea id="input" placeholder="scm_family_cd | tech_cd | fab_den_cd | mode_cd
+DRAM | | AC | DC"></textarea>
+
+      <div class="toolbar">
+        <button class="primary" type="button" id="parseBtn">표로 보기</button>
+        <button type="button" id="sampleBtn">예시 넣기</button>
+        <button type="button" id="clearBtn">지우기</button>
+        <button type="button" id="copyTsvBtn">엑셀용 복사(TSV)</button>
+      </div>
+
+      <div class="options">
+        <label><input type="checkbox" id="showRowNo" checked /> 행 번호 표시</label>
+        <label><input type="checkbox" id="highlightEmpty" checked /> 빈 값 강조(∅)</label>
+        <label><input type="checkbox" id="stickyHeader" checked /> 헤더 고정</label>
+        <label><input type="checkbox" id="zebra" checked /> 줄무늬 배경</label>
+      </div>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <h2>② 결과 표</h2>
+      <input id="filterInput" type="text" placeholder="행 검색 (아무 컬럼이나 포함되면 표시)..." />
+      <div class="stats" id="stats"></div>
+      <div id="tableWrap">
+        <p class="empty">로그를 붙여넣고 <strong>표로 보기</strong>를 눌러주세요.</p>
+      </div>
+    </div>
+
+    <div class="panel guide">
+      <strong>사용법</strong><br />
+      1. 이클립스/서버 로그에서 헤더 + 데이터 행 복사<br />
+      2. 붙여넣기 → <strong>표로 보기</strong> (단축키: Ctrl+Enter)<br />
+      3. 컬럼 많으면 가로 스크롤, 행 많으면 세로 스크롤<br />
+      4. 엑셀로내려면 <strong>엑셀용 복사(TSV)</strong> → 엑셀 붙여넣기<br /><br />
+      <strong>지원 형식</strong><br />
+      · 구분자: <code>|</code> 또는 <code>탭</code><br />
+      · 1행 = 컬럼명, 2행부터 = 데이터<br />
+      · 빈 값 <code>| |</code> 도 정상 인식
+    </div>
+  </div>
+
+  <script src="./쿼리로그_테이블뷰어.js"></script>
+</body>
+</html>
