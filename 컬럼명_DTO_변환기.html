@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>컬럼명 → DTO 변환기</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Malgun Gothic", Pretendard, sans-serif;
+        background: #f3f4f6;
+        color: #111827;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .sub {
+        color: #6b7280;
+        font-size: 13px;
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .panel h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+      }
+      textarea,
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      textarea {
+        min-height: 110px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+        resize: vertical;
+      }
+      #output {
+        min-height: 320px;
+      }
+      .options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 12px 0;
+      }
+      .field label {
+        display: block;
+        font-size: 13px;
+        color: #374151;
+        margin-bottom: 6px;
+      }
+      .radio-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        font-size: 13px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      button {
+        padding: 8px 14px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.primary {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+      }
+      button:hover {
+        background: #f3f4f6;
+      }
+      button.primary:hover {
+        background: #1d4ed8;
+      }
+      .status {
+        font-size: 13px;
+        color: #059669;
+        margin-top: 10px;
+        min-height: 18px;
+      }
+      .status.error {
+        color: #dc2626;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th,
+      td {
+        border: 1px solid #e5e7eb;
+        padding: 8px 10px;
+        text-align: left;
+      }
+      th {
+        background: #f9fafb;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .guide {
+        font-size: 13px;
+        color: #4b5563;
+        line-height: 1.7;
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 12px;
+      }
+      @media (max-width: 900px) {
+        .options {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>컬럼명 → DTO 변환기</h1>
+      <p class="sub">
+        쿼리/디버그 로그의 컬럼 헤더(<code>AAA | BBB | CCC | DDD</code>)를
+        Spring Boot <strong>DTO Java 코드</strong>로 바꿉니다.<br />
+        HTML + JS 2개 파일만 사용합니다. <code>Desktop\cursor</code> 폴더에서 HTML을 더블클릭하세요.
+      </p>
+
+      <div class="panel">
+        <h2>① 컬럼명 붙여넣기</h2>
+        <textarea id="input" placeholder="AAA | BBB | CCC | DDD"></textarea>
+
+        <div class="options">
+          <div class="field">
+            <label for="className">클래스명</label>
+            <input id="className" type="text" value="Kpi046MainItem" />
+          </div>
+          <div class="field">
+            <label for="innerClassName">내부 클래스명 (래퍼 모드)</label>
+            <input id="innerClassName" type="text" value="MainItem" />
+          </div>
+          <div class="field">
+            <label for="packageName">패키지명</label>
+            <input
+              id="packageName"
+              type="text"
+              value="com.skhynix.gscm.d.kp.kpi.dto"
+            />
+          </div>
+          <div class="field">
+            <label for="fieldType">필드 타입</label>
+            <select id="fieldType">
+              <option value="String" selected>String</option>
+              <option value="Integer">Integer</option>
+              <option value="Long">Long</option>
+              <option value="BigDecimal">BigDecimal</option>
+              <option value="Object">Object</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom: 10px">
+          <label>출력 형태</label>
+          <div class="radio-group">
+            <label
+              ><input type="radio" name="outputMode" value="single" checked />
+              단일 DTO</label
+            >
+            <label
+              ><input type="radio" name="outputMode" value="wrapper" />
+              래퍼 DTO (mainList/chartList + 내부 클래스)</label
+            >
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom: 10px">
+          <label>DTO 스타일</label>
+          <div class="radio-group">
+            <label
+              ><input type="radio" name="dtoStyle" value="lombok" checked />
+              Lombok</label
+            >
+            <label
+              ><input type="radio" name="dtoStyle" value="plain" /> plain
+              getter/setter</label
+            >
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom: 10px">
+          <label>추가 출력</label>
+          <div class="radio-group">
+            <label
+              ><input type="radio" name="extraOutput" value="none" checked />
+              DTO만</label
+            >
+            <label
+              ><input type="radio" name="extraOutput" value="service" />
+              + Service 매핑 코드</label
+            >
+            <label
+              ><input type="radio" name="extraOutput" value="mybatis" />
+              + MyBatis AS 목록</label
+            >
+          </div>
+        </div>
+
+        <label style="font-size: 13px">
+          <input type="checkbox" id="skipPivot" checked />
+          pivot 월 컬럼(202601, m202601) 제외
+        </label>
+
+        <div class="toolbar">
+          <button class="primary" type="button" id="convertBtn">DTO 생성</button>
+          <button type="button" id="sampleBtn">예시 넣기</button>
+          <button type="button" id="clearBtn">지우기</button>
+          <button type="button" id="copyBtn">Java 복사</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="panel">
+        <h2>② 생성된 Java 코드</h2>
+        <textarea id="output" readonly placeholder="Java DTO 코드"></textarea>
+      </div>
+
+      <div class="panel">
+        <h2>③ 변환 미리보기</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>순서</th>
+              <th>컬럼명</th>
+              <th>DTO 필드</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody">
+            <tr>
+              <td colspan="3" style="color: #9ca3af">변환 후 표시됩니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel guide">
+        <strong>변환 규칙</strong><br />
+        · <code>AAA | BBB | CCC</code> → <code>aaa</code>, <code>bbb</code>,
+        <code>ccc</code><br />
+        · <code>ITEM_CD | ITEM_NM</code> → <code>itemCd</code>,
+        <code>itemNm</code><br />
+        · 구분자: <code>|</code>, <code>,</code>, <code>탭</code>, 줄바꿈 지원<br />
+        · 차트용은 클래스명만 <code>Kpi046ChartItem</code>으로 바꿔서 한 번 더 생성
+      </div>
+    </div>
+
+    <script src="./컬럼명_DTO_변환기.js"></script>
+  </body>
+</html>
