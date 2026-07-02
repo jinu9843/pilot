@@ -1,0 +1,297 @@
+import { useState, useEffect, useRef } from 'react'
+import * as echarts from 'echarts'
+import { mainList, sixMonthItem } from '../data/mainList'
+
+// ============================================================
+// 라인 차트(판매계획정확도) 목데이터. DRAM/NAND 둘 다 xData(기간)는 공유한다.
+// ============================================================
+const LINE_CHART_MONTHS = [
+  'M202505',
+  'M202506',
+  'M202507',
+  'M202508',
+  'M202509',
+  'M202510',
+  'M202511',
+  'M202512',
+  'M202601',
+  'M202602',
+  'M202603',
+  'M202604',
+  'M202605',
+]
+
+const LINE_CHART_DATA_BY_FAMILY = {
+  DRAM: {
+    chartTitle: 'DRAM',
+    xData: LINE_CHART_MONTHS,
+    dramFamilyVal: '77.8',
+    dramAvg13R: '83.4',
+    lineName: '판매계획정확도(%)',
+    yData: [77.8, 78.2, 78.6, 79.0, 79.4, 79.8, 80.2, 80.6, 81.0, 81.4, 81.8, 82.2, 82.6],
+  },
+  NAND: {
+    chartTitle: 'NAND',
+    xData: LINE_CHART_MONTHS,
+    dramFamilyVal: '77.8',
+    dramAvg13R: '84.0',
+    lineName: '판매계획정확도(%)',
+    yData: [74.5, 79.8, 76.1, 82.3, 77.6, 80.9, 75.4, 83.2, 78.1, 81.5, 76.8, 79.9, 82.6],
+  },
+}
+
+// ============================================================
+// 라인 차트(판매계획정확도) 옵션 빌드
+// ============================================================
+const pointLabel = {
+  show: true,
+  position: 'top',
+  fontSize: 11,
+}
+
+const startLabel = {
+  show: true,
+  position: 'start',
+  formatter: (params) => (params.dataIndex === 0 ? params.value : ''),
+}
+
+const buildEndLabel = (xData) => ({
+  show: true,
+  position: 'end',
+  formatter: (params) => (params.dataIndex === xData.length - 1 ? params.value : ''),
+})
+
+const formatLineXAxisLabel = (value, index) => {
+  const year = value.slice(1, 5)
+  const month = value.slice(5, 7)
+  const yearShort = year.slice(2)
+  const monthNum = parseInt(month, 10)
+  return index === 0 || month === '01' ? `${yearShort}.${monthNum}월` : `${monthNum}월`
+}
+
+const buildLineChartOption = (props) => {
+  const series = [
+    {
+      type: 'line',
+      smooth: true,
+      data: props.yData,
+      label: pointLabel,
+      name: props.lineName,
+    },
+    {
+      type: 'line',
+      name: '목표',
+      label: startLabel,
+      data: props.xData.map(() => props.dramFamilyVal),
+      lineStyle: { type: 'dashed' },
+      symbol: 'none',
+      itemStyle: { color: 'red' },
+    },
+    {
+      type: 'line',
+      name: 'MAX',
+      label: buildEndLabel(props.xData),
+      data: props.xData.map(() => props.dramAvg13R),
+      lineStyle: { type: 'dashed' },
+      symbol: 'none',
+      itemStyle: { color: 'red' },
+    },
+  ]
+
+  return {
+    title: { text: props.chartTitle, left: 'center', textStyle: { fontSize: 13 } },
+    tooltip: { trigger: 'axis' },
+    legend: {
+      data: series.map((item) => item.name),
+      selectedMode: true,
+      top: props.chartTitle ? 24 : undefined,
+    },
+    grid: { top: props.chartTitle ? 64 : 40 },
+    xAxis: {
+      type: 'category',
+      data: props.xData,
+      boundaryGap: false,
+      axisLabel: {
+        interval: 0,
+        rotate: 45,
+        formatter: formatLineXAxisLabel,
+      },
+    },
+    yAxis: { type: 'value' },
+    series,
+  }
+}
+
+// ============================================================
+// 막대 차트(판매실적/계획판매량/초과판매/계획외 판매/판매차질) 데이터 + 옵션 빌드
+// x축은 막대 하나하나가 카테고리다(월 하나당 8개, 병합되면 5개).
+// 각 막대 바로 아래엔 M3/M2/M1/M0을 'M' / '3'처럼 두 줄로 나눠서 적고,
+// '2월' 같은 월 표시는 그 밑에 그룹 전체 가운데에 한 번만 그린다(그래픽 텍스트로 별도 처리).
+// ============================================================
+const OFFSETS = ['M3', 'M2', 'M1', 'M0']
+const PLN_COLOR = '#5b8ff9'
+const INDICATOR_COLOR = '#61ddaa'
+
+// '202602' -> '2월'
+const formatBarMonthLabel = (colId) => `${parseInt(colId.slice(4, 6), 10)}월`
+
+// 조회대상 기간이 4개월을 넘으면 종료월(periodTo) 기준 최근 4개월까지만 사용한다.
+const pickRecentMonths = (periodFrom, periodTo) => {
+  const monthsInRange = sixMonthItem.map((item) => item.colId).filter((colId) => colId >= periodFrom && colId <= periodTo)
+  return monthsInRange.slice(-4)
+}
+
+const findRow = (family, gubun) => mainList.find((row) => row.scmFamilyCd === family && row.gubun === gubun)
+
+// 특정 달(colId)의 특정 오프셋(M3/M2/M1/M0) 값 하나를 읽는다.
+const readValue = (row, colId, offset) => row?.[`M${colId}_${offset}_G`] ?? null
+
+// 지표설정(outGubun)이 SALE처럼 달마다 M3~M0 값이 전부 같아서(그리드에서 1칸으로 병합되는 행) 막대도 1개만 보여준다.
+const isMergedIndicator = (row, months) => {
+  const allValues = months.flatMap((colId) => OFFSETS.map((offset) => readValue(row, colId, offset)))
+  return allValues.length > 1 && allValues.every((v) => v === allValues[0])
+}
+
+// 막대 위 데이터 라벨. null(값 없음)이면 아무것도 안 보여준다.
+const barValueLabel = {
+  show: true,
+  position: 'top',
+  fontSize: 10,
+  formatter: (params) => (params.value == null ? '' : params.value),
+}
+
+// 'M3' -> 'M\n3' (가로로 안 쓰고 두 줄로 쌓아서 좁은 너비에도 겹치지 않게)
+const stackedOffsetLabel = (offset) => `${offset.slice(0, 1)}\n${offset.slice(1)}`
+
+// 달마다: 당월판매Demand(PLN) M3~M0(4개 막대) + 선택된 지표 M3~M0(4개, 병합되면 1개)을
+// 한 줄로 쭉 이어 붙인 '막대 1개당 카테고리 1개' 축 데이터를 만든다.
+// monthGroups는 각 월이 차지하는 막대 구간(시작~끝 인덱스)을 담아서, 그 아래 중앙에 월 이름을 그리는 데 쓴다.
+const buildIndicatorBarChartData = (formData, family) => {
+  const months = pickRecentMonths(formData.periodFrom, formData.periodTo)
+  const plnRow = findRow(family, 'PLN')
+  const indicatorRow = findRow(family, formData.outGubun)
+  const indicatorName = indicatorRow?.gubunNm ?? formData.outGubun
+  const merged = isMergedIndicator(indicatorRow, months)
+
+  const categories = []
+  const plnSeriesData = []
+  const indicatorSeriesData = []
+  const monthGroups = []
+
+  months.forEach((colId) => {
+    const startIndex = categories.length
+
+    OFFSETS.forEach((offset) => {
+      categories.push(stackedOffsetLabel(offset))
+      plnSeriesData.push(readValue(plnRow, colId, offset))
+      indicatorSeriesData.push(null)
+    })
+
+    if (merged) {
+      categories.push(indicatorName)
+      plnSeriesData.push(null)
+      indicatorSeriesData.push(readValue(indicatorRow, colId, 'M0'))
+    } else {
+      OFFSETS.forEach((offset) => {
+        categories.push(stackedOffsetLabel(offset))
+        plnSeriesData.push(null)
+        indicatorSeriesData.push(readValue(indicatorRow, colId, offset))
+      })
+    }
+
+    monthGroups.push({ label: formatBarMonthLabel(colId), startIndex, endIndex: categories.length - 1 })
+  })
+
+  return { categories, plnSeriesData, indicatorSeriesData, indicatorName, monthGroups }
+}
+
+const buildBarChartOption = (chartTitle, barData) => ({
+  title: { text: chartTitle, left: 'center', textStyle: { fontSize: 13 } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['당월판매Demand', barData.indicatorName], top: 24 },
+  grid: { top: 64, bottom: 56 },
+  xAxis: {
+    type: 'category',
+    data: barData.categories,
+    axisLabel: { interval: 0, fontSize: 10, lineHeight: 12 },
+  },
+  yAxis: { type: 'value' },
+  series: [
+    { type: 'bar', name: '당월판매Demand', data: barData.plnSeriesData, itemStyle: { color: PLN_COLOR }, label: barValueLabel },
+    { type: 'bar', name: barData.indicatorName, data: barData.indicatorSeriesData, itemStyle: { color: INDICATOR_COLOR }, label: barValueLabel },
+  ],
+})
+
+// '2월' 같은 월 라벨은 카테고리 하나짜리가 아니라 그 달이 차지하는 막대 구간 전체의 가운데 아래에 그려야 하므로,
+// 일반 axisLabel로는 표현이 안 되고 그래픽 텍스트를 그룹 중앙 픽셀 좌표에 직접 그린다.
+const buildMonthLabelGraphics = (chart, monthGroups) =>
+  monthGroups.map((group) => {
+    const centerIndex = (group.startIndex + group.endIndex) / 2
+    const [x, y] = chart.convertToPixel({ gridIndex: 0 }, [centerIndex, 0])
+    return {
+      type: 'text',
+      x,
+      y: y + 34,
+      style: { text: group.label, fontSize: 11, fill: '#333', align: 'center' },
+      silent: true,
+    }
+  })
+
+// ============================================================
+// 컴포넌트: 지표설정이 판매계획정확도(outGubun === 'AB')면 라인 차트,
+// 그 외(판매실적/계획판매량/초과판매/계획외 판매/판매차질)면 막대 차트를 그린다.
+// ============================================================
+const Kp005Chart = ({ family, searchedFormData }) => {
+  const boxRef = useRef(null)
+  const chartRef = useRef(null)
+  const monthGroupsRef = useRef([])
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const chart = echarts.init(boxRef.current)
+    chartRef.current = chart
+    setReady(true)
+    return () => {
+      chart.dispose()
+    }
+  }, [])
+
+  // 막대 차트일 때만 그룹(월)별 중앙 아래에 월 이름 그래픽 텍스트를 (다시) 그린다.
+  const drawMonthLabels = () => {
+    const chart = chartRef.current
+    if (!chart || monthGroupsRef.current.length === 0) return
+    chart.setOption({ graphic: buildMonthLabelGraphics(chart, monthGroupsRef.current) })
+  }
+
+  useEffect(() => {
+    if (!ready) return
+    const chart = chartRef.current
+    if (!chart) return
+
+    const isAccuracyIndicator = searchedFormData.outGubun === 'AB'
+
+    if (isAccuracyIndicator) {
+      monthGroupsRef.current = []
+      chart.setOption(buildLineChartOption(LINE_CHART_DATA_BY_FAMILY[family]), { notMerge: true })
+      return
+    }
+
+    const barData = buildIndicatorBarChartData(searchedFormData, family)
+    monthGroupsRef.current = barData.monthGroups
+    chart.setOption(buildBarChartOption(family, barData), { notMerge: true })
+    drawMonthLabels()
+  }, [ready, family, searchedFormData])
+
+  useEffect(() => {
+    const handleResize = () => {
+      chartRef.current?.resize()
+      drawMonthLabels()
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  return <div ref={boxRef} style={{ width: '100%', height: '100%' }}></div>
+}
+
+export default Kp005Chart
